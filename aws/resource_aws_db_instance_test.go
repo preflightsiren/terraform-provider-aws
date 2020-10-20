@@ -1110,7 +1110,6 @@ func TestAccAWSDBInstance_ReplicateSourceDb_CACertificateIdentifier(t *testing.T
 	var dbInstance, sourceDbInstance rds.DBInstance
 
 	rName := acctest.RandomWithPrefix("tf-acc-test")
-	caName := "rds-ca-2019"
 	sourceResourceName := "aws_db_instance.source"
 	resourceName := "aws_db_instance.test"
 
@@ -1120,13 +1119,13 @@ func TestAccAWSDBInstance_ReplicateSourceDb_CACertificateIdentifier(t *testing.T
 		CheckDestroy: testAccCheckAWSDBInstanceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSDBInstanceConfig_ReplicateSourceDb_CACertificateIdentifier(rName, caName),
+				Config: testAccAWSDBInstanceConfig_ReplicateSourceDb_CACertificateIdentifier(rName, testAccRDSCACertificateID()),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSDBInstanceExists(sourceResourceName, &sourceDbInstance),
 					testAccCheckAWSDBInstanceExists(resourceName, &dbInstance),
 					testAccCheckAWSDBInstanceReplicaAttributes(&sourceDbInstance, &dbInstance),
-					resource.TestCheckResourceAttr(sourceResourceName, "ca_cert_identifier", caName),
-					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", caName),
+					resource.TestCheckResourceAttr(sourceResourceName, "ca_cert_identifier", testAccRDSCACertificateID()),
+					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", testAccRDSCACertificateID()),
 				),
 			},
 		},
@@ -2234,12 +2233,14 @@ func TestAccAWSDBInstance_MinorVersion(t *testing.T) {
 }
 
 func TestAccAWSDBInstance_ec2Classic(t *testing.T) {
-	var v rds.DBInstance
+	hardcodedRegion := "us-east-1" // lintignore:AWSAT003
+	testAccReachableRegionPreCheck(hardcodedRegion, t)
 
 	oldvar := os.Getenv("AWS_DEFAULT_REGION")
-	os.Setenv("AWS_DEFAULT_REGION", "us-east-1")
+	os.Setenv("AWS_DEFAULT_REGION", hardcodedRegion)
 	defer os.Setenv("AWS_DEFAULT_REGION", oldvar)
 
+	var v rds.DBInstance
 	rInt := acctest.RandInt()
 
 	resource.ParallelTest(t, resource.TestCase{
@@ -2975,7 +2976,6 @@ func TestAccAWSDBInstance_CACertificateIdentifier(t *testing.T) {
 	var dbInstance rds.DBInstance
 
 	resourceName := "aws_db_instance.bar"
-	cacID := "rds-ca-2019"
 
 	resource.ParallelTest(t, resource.TestCase{
 		PreCheck:     func() { testAccPreCheck(t) },
@@ -2983,10 +2983,10 @@ func TestAccAWSDBInstance_CACertificateIdentifier(t *testing.T) {
 		CheckDestroy: testAccCheckAWSDBInstanceDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSDBInstanceConfig_WithCACertificateIdentifier(cacID),
+				Config: testAccAWSDBInstanceConfig_WithCACertificateIdentifier(testAccRDSCACertificateID()),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSDBInstanceExists(resourceName, &dbInstance),
-					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", cacID),
+					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", testAccRDSCACertificateID()),
 				),
 			},
 		},
@@ -3239,6 +3239,8 @@ resource "aws_s3_bucket_object" "xtrabackup_db" {
   etag   = filemd5("./testdata/mysql-5-6-xtrabackup.tar.gz")
 }
 
+data "aws_partition" "current" {}
+
 resource "aws_iam_role" "rds_s3_access_role" {
   name = "%[3]s-role"
 
@@ -3250,7 +3252,7 @@ resource "aws_iam_role" "rds_s3_access_role" {
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "Service": "rds.amazonaws.com"
+        "Service": "rds.${data.aws_partition.current.dns_suffix}"
       },
       "Action": "sts:AssumeRole"
     }
@@ -3399,8 +3401,7 @@ resource "aws_db_instance" "snapshot" {
 
 func testAccAWSDbInstanceConfig_MonitoringInterval(rName string, monitoringInterval int) string {
 	return fmt.Sprintf(`
-data "aws_partition" "current" {
-}
+data "aws_partition" "current" {}
 
 resource "aws_iam_role" "test" {
   name = %[1]q
@@ -3413,7 +3414,7 @@ resource "aws_iam_role" "test" {
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "Service": "monitoring.rds.amazonaws.com"
+        "Service": "monitoring.rds.${data.aws_partition.current.dns_suffix}"
       },
       "Action": "sts:AssumeRole"
     }
@@ -3491,8 +3492,7 @@ resource "aws_db_instance" "test" {
 
 func testAccAWSDbInstanceConfig_MonitoringRoleArn(rName string) string {
 	return fmt.Sprintf(`
-data "aws_partition" "current" {
-}
+data "aws_partition" "current" {}
 
 resource "aws_iam_role" "test" {
   name = %[1]q
@@ -3505,7 +3505,7 @@ resource "aws_iam_role" "test" {
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "Service": "monitoring.rds.amazonaws.com"
+        "Service": "monitoring.rds.${data.aws_partition.current.dns_suffix}"
       },
       "Action": "sts:AssumeRole"
     }
@@ -4047,6 +4047,8 @@ resource "aws_directory_service_directory" "bar" {
   }
 }
 
+data "aws_partition" "current" {}
+
 resource "aws_iam_role" "role" {
   name = "tf-acc-db-instance-mssql-domain-role-%[1]d"
 
@@ -4057,7 +4059,7 @@ resource "aws_iam_role" "role" {
     {
       "Action": "sts:AssumeRole",
       "Principal": {
-        "Service": "rds.amazonaws.com"
+        "Service": "rds.${data.aws_partition.current.dns_suffix}"
       },
       "Effect": "Allow",
       "Sid": ""
@@ -4069,7 +4071,7 @@ EOF
 
 resource "aws_iam_role_policy_attachment" "attatch-policy" {
   role       = aws_iam_role.role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
 }
 `, rInt))
 }
@@ -4176,6 +4178,8 @@ resource "aws_directory_service_directory" "bar" {
   }
 }
 
+data "aws_partition" "current" {}
+
 resource "aws_iam_role" "role" {
   name = "tf-acc-db-instance-mssql-domain-role-%[1]d"
 
@@ -4186,7 +4190,7 @@ resource "aws_iam_role" "role" {
     {
       "Action": "sts:AssumeRole",
       "Principal": {
-        "Service": "rds.amazonaws.com"
+        "Service": "rds.${data.aws_partition.current.dns_suffix}"
       },
       "Effect": "Allow",
       "Sid": ""
@@ -4198,7 +4202,7 @@ EOF
 
 resource "aws_iam_role_policy_attachment" "attatch-policy" {
   role       = aws_iam_role.role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
 }
 `, rInt))
 }
@@ -4309,6 +4313,8 @@ resource "aws_directory_service_directory" "foo" {
   }
 }
 
+data "aws_partition" "current" {}
+
 resource "aws_iam_role" "role" {
   name = "tf-acc-db-instance-mssql-domain-role-%[1]d"
 
@@ -4319,7 +4325,7 @@ resource "aws_iam_role" "role" {
     {
       "Action": "sts:AssumeRole",
       "Principal": {
-        "Service": "rds.amazonaws.com"
+        "Service": "rds.${data.aws_partition.current.dns_suffix}"
       },
       "Effect": "Allow",
       "Sid": ""
@@ -4331,7 +4337,7 @@ EOF
 
 resource "aws_iam_role_policy_attachment" "attatch-policy" {
   role       = aws_iam_role.role.name
-  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
+  policy_arn = "arn:${data.aws_partition.current.partition}:iam::aws:policy/service-role/AmazonRDSDirectoryServiceAccess"
 }
 `, rInt))
 }
@@ -5673,8 +5679,7 @@ resource "aws_db_instance" "test" {
 
 func testAccAWSDBInstanceConfig_ReplicateSourceDb_Monitoring(rName string, monitoringInterval int) string {
 	return composeConfig(testAccAWSDBInstanceConfig_orderableClassMysql(), fmt.Sprintf(`
-data "aws_partition" "current" {
-}
+data "aws_partition" "current" {}
 
 resource "aws_iam_role" "test" {
   name = %[1]q
@@ -5687,7 +5692,7 @@ resource "aws_iam_role" "test" {
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "Service": "monitoring.rds.amazonaws.com"
+        "Service": "monitoring.rds.${data.aws_partition.current.dns_suffix}"
       },
       "Action": "sts:AssumeRole"
     }
@@ -6472,8 +6477,7 @@ resource "aws_db_instance" "test" {
 
 func testAccAWSDBInstanceConfig_SnapshotIdentifier_Monitoring(rName string, monitoringInterval int) string {
 	return composeConfig(testAccAWSDBInstanceConfig_orderableClassMariadb(), fmt.Sprintf(`
-data "aws_partition" "current" {
-}
+data "aws_partition" "current" {}
 
 resource "aws_iam_role" "test" {
   name = %[1]q
@@ -6486,7 +6490,7 @@ resource "aws_iam_role" "test" {
       "Sid": "",
       "Effect": "Allow",
       "Principal": {
-        "Service": "monitoring.rds.amazonaws.com"
+        "Service": "monitoring.rds.${data.aws_partition.current.dns_suffix}"
       },
       "Action": "sts:AssumeRole"
     }

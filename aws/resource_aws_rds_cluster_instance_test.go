@@ -865,10 +865,10 @@ func TestAccAWSRDSClusterInstance_CACertificateIdentifier(t *testing.T) {
 		CheckDestroy: testAccCheckAWSClusterDestroy,
 		Steps: []resource.TestStep{
 			{
-				Config: testAccAWSRDSClusterInstanceConfig_CACertificateIdentifier(rName, "rds-ca-2019"),
+				Config: testAccAWSRDSClusterInstanceConfig_CACertificateIdentifier(rName, testAccRDSCACertificateID()),
 				Check: resource.ComposeTestCheckFunc(
 					testAccCheckAWSClusterInstanceExists(resourceName, &dbInstance),
-					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", "rds-ca-2019"),
+					resource.TestCheckResourceAttr(resourceName, "ca_cert_identifier", testAccRDSCACertificateID()),
 				),
 			},
 			{

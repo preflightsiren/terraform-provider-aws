@@ -16,11 +16,14 @@ import (
 )
 
 func TestAccAWSDBSecurityGroup_basic(t *testing.T) {
-	var v rds.DBSecurityGroup
+	hardcodedRegion := "us-east-1" // lintignore:AWSAT003
+	testAccReachableRegionPreCheck(hardcodedRegion, t)
 
 	oldvar := os.Getenv("AWS_DEFAULT_REGION")
-	os.Setenv("AWS_DEFAULT_REGION", "us-east-1")
+	os.Setenv("AWS_DEFAULT_REGION", hardcodedRegion)
 	defer os.Setenv("AWS_DEFAULT_REGION", oldvar)
+
+	var v rds.DBSecurityGroup
 	resourceName := "aws_db_security_group.test"
 	rName := fmt.Sprintf("tf-acc-%s", acctest.RandString(5))
 

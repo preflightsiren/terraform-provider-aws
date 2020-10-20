@@ -42,8 +42,11 @@ func TestAccAWSDbInstanceDataSource_basic(t *testing.T) {
 }
 
 func TestAccAWSDbInstanceDataSource_ec2Classic(t *testing.T) {
+	hardcodedRegion := "us-east-1" // lintignore:AWSAT003
+	testAccReachableRegionPreCheck(hardcodedRegion, t)
+
 	oldvar := os.Getenv("AWS_DEFAULT_REGION")
-	os.Setenv("AWS_DEFAULT_REGION", "us-east-1")
+	os.Setenv("AWS_DEFAULT_REGION", hardcodedRegion)
 	defer os.Setenv("AWS_DEFAULT_REGION", oldvar)
 
 	rInt := acctest.RandInt()

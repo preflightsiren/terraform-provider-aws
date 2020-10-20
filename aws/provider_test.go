@@ -498,6 +498,14 @@ func testAccGetThirdRegionPartition() string {
 	return "aws"
 }
 
+func testAccRDSCACertificateID() string {
+	v := os.Getenv("AWS_RDS_CA_CERTIFICATE_IDENTIFIER")
+	if v == "" {
+		return "rds-ca-2019"
+	}
+	return v
+}
+
 func testAccAlternateAccountPreCheck(t *testing.T) {
 	if os.Getenv("AWS_ALTERNATE_PROFILE") == "" && os.Getenv("AWS_ALTERNATE_ACCESS_KEY_ID") == "" {
 		t.Fatal("AWS_ALTERNATE_ACCESS_KEY_ID or AWS_ALTERNATE_PROFILE must be set for acceptance tests")
@@ -526,6 +534,15 @@ func testAccEC2ClassicPreCheck(t *testing.T) {
 	if !hasEc2Classic(platforms) {
 		t.Skipf("This test can only run in EC2 Classic, platforms available in %s: %q",
 			region, platforms)
+	}
+}
+
+// testAccReachableRegionPreCheck checks whether the partition of the current region includes the given region
+func testAccReachableRegionPreCheck(region string, t *testing.T) {
+	if partition, ok := endpoints.PartitionForRegion(endpoints.DefaultPartitions(), testAccGetRegion()); ok {
+		if _, ok := partition.Regions()[region]; !ok {
+			t.Skip(fmt.Sprintf("skipping test; partition %s does not have %s region", partition.ID(), region))
+		}
 	}
 }
 
